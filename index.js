@@ -111,7 +111,6 @@ function handleKeyUp(key){
     let windowWasResized = true;
     let start;
 
-    start();
 
     function step(timestamp) {
         if (!start) {
