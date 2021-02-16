@@ -125,8 +125,8 @@ function handleKeyUp(key){
             windowWasResized = false;
         }
 
-        update(dt);
-        render(context);
+        playerUpdate(dt);
+        playerRender(context);
 
         window.requestAnimationFrame(step);
     }
