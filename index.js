@@ -1,112 +1,145 @@
 'use strict';
 
-const canvas = document.getElementById("canvas");
-const context = canvas.getContext("2d");
-const VEL = 7
-const PLAYER_RADIUS = 50
 const FRUIT_RADIUS = 10
 
-let x = PLAYER_RADIUS
-let y = PLAYER_RADIUS
-let direction_x = 0;
-let direction_y = 0;
+function fillCircle(context, x,y, radius, color) {
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(x, y, radius, 0, 2 * Math.PI, false);
+    context.fill();
+}
 
-canvas.width = document.body.clientWidth
-canvas.height = document.body.clientHeight
+function fillRect(context, x,y, width, height, color) {
+    context.fillStyle = color;
+    context.fillRect(x,y, width, height );
+}
 
 // TODO: Criar a classe Game
 class Game {
 
-    constructor(){
+
+    constructor(startingObjects){
+        this.gameObjects = new Set(startingObjects);
     }
 
-    renderAll(){
-        this.gameObjects.forEach(o => o.render(this.contex))
+    render(context){
+        context.clearRect(
+                0, // x
+                0, // y
+                canvas.width, // width
+                canvas.height // height
+        )
+        Array.from(this.gameObjects)
+            .filter(o => o.render ? true : false)
+            .forEach(o => o.render(context))
     }
 
-    render(){
-        this.renderAll()
+    update(dt){
+        Array.from(this.gameObjects)
+            .filter(o => o.update ? true : false)
+            .forEach(o => o.update(dt))
     }
 
-    update(){
+    handleKeyDown(key){
+        Array.from(this.gameObjects)
+            .filter(o => o.handleKeyDown ? true : false)
+            .forEach(o => o.handleKeyDown(key))
+    }
+    handleKeyUp(key){
+        Array.from(this.gameObjects)
+            .filter(o => o.handleKeyUp ? true : false)
+            .forEach(o => o.handleKeyUp(key))
     }
 
     start(){
-        let id = window.setInterval(spawnFruit,4000)
+        // let id = window.setInterval(spawnFruit,4000)
+    }
+
+    addObject(obj){
+        this.gameObjects.add(obj)
     }
 }
 
+class Player {
+
+    keysPressed = new Set();
+    direction_table = Object.freeze({
+        "KeyW" : [0,-1],
+        "KeyA" : [-1,0],
+        "KeyS" : [0, 1],
+        "KeyD" : [1, 0]
+    })
+    x = 0
+    y = 0
+    width = 50
+    height = 50
+    direction_x = 0
+    direction_y = 0
+    VEL = 7
+
+    constructor(id, color){
+        this.id = id
+        this.color = color
+    }
+
+    update(dt){
+        this.x += this.direction_x * this.VEL;
+        this.y += this.direction_y * this.VEL;
+    }
+
+    render(context){
+        fillRect(
+            context,
+            this.x,
+            this.y,
+            this.width,
+            this.height,
+            this.color)
+    }
+
+    handleKeyDown(key){
+        if(this.direction_table[key]){
+            if(!this.keysPressed.has(key)){
+                const [ddx, ddy] = this.direction_table[key]
+                this.direction_x += ddx
+                this.direction_y += ddy
+                this.keysPressed.add(key)
+            }
+        }
+    }
+
+    handleKeyUp(key){
+        if(this.direction_table[key]){
+            if(this.keysPressed.has(key)){
+                const [ddx, ddy] = this.direction_table[key]
+                this.direction_x -= ddx
+                this.direction_y -= ddy
+                this.keysPressed.delete(key)
+            }
+        }
+    }
+}
 
 function spawnFruit(){
     function randInScreen(){
         return [Math.random()*canvas.width, Math.random()*canvas.height]
     }
     let [x,y] = randInScreen()
-    console.log('x',x,'y',y)
     fillCircle(x,y, FRUIT_RADIUS, 'yellow')
 }
 
-function fillCircle( x,y, radius, color) {
-    context.fillStyle = color;
-    context.beginPath();
-    context.arc(x, y, radius, 0, 2 * Math.PI, false);
-    context.fill();
-}
-function fillRect( x,y, width, height, color) {
-    context.fillStyle = color;
-    context.fillRect(x,y, width, height );
-}
 
-function playerUpdate(dt){
-    x += direction_x * VEL;
-    y += direction_y * VEL;
-}
+function main() {
 
-function playerRender(context){
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
 
-    context.clearRect(
-        0, // x
-        0, // y
-        canvas.width, // width
-        canvas.height // height
-    )
+    canvas.width = document.body.clientWidth
+    canvas.height = document.body.clientHeight
 
-    fillRect( x, y, PLAYER_RADIUS, PLAYER_RADIUS, "red")
-}
-
-
-const direction_table = {
-    "KeyW" : [0,-1],
-    "KeyA" : [-1,0],
-    "KeyS" : [0, 1],
-    "KeyD" : [1, 0]
-}
-
-let keysPressed = new Set();
-
-function handleKeyDown(key){
-    if(direction_table[key]){
-        if(!keysPressed.has(key)){
-            const [ddx, ddy] = direction_table[key]
-            direction_x += ddx
-            direction_y += ddy
-            keysPressed.add(key)
-        }
-    }
-}
-
-function handleKeyUp(key){
-    if(direction_table[key]){
-        if(keysPressed.has(key)){
-            const [ddx, ddy] = direction_table[key]
-            direction_x -= ddx
-            direction_y -= ddy
-            keysPressed.delete(key)
-        }
-    }
-}
-
-(() => {
+    let game = new Game([
+         new Player('player1', 'red')
+    ]);
 
     let windowWasResized = true;
     let start;
@@ -125,8 +158,8 @@ function handleKeyUp(key){
             windowWasResized = false;
         }
 
-        playerUpdate(dt);
-        playerRender(context);
+        game.update(dt);
+        game.render(context);
 
         window.requestAnimationFrame(step);
     }
@@ -137,10 +170,13 @@ function handleKeyUp(key){
     window.requestAnimationFrame(step);
 
     document.addEventListener('keydown', e =>{
-        handleKeyDown(e.code)
+        game.handleKeyDown(e.code)
     })
     document.addEventListener('keyup', e =>{
-        handleKeyUp(e.code)
+        game.handleKeyUp(e.code)
     })
 
-})()
+
+
+}
+main();
