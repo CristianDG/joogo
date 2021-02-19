@@ -17,8 +17,7 @@ function fillRect(context, x,y, width, height, color) {
 // TODO: Criar a classe Game
 class Game {
 
-
-    constructor(startingObjects){
+    constructor(width, height, startingObjects){
         this.gameObjects = new Set(startingObjects);
     }
 
@@ -29,26 +28,25 @@ class Game {
                 canvas.width, // width
                 canvas.height // height
         )
+        this.verifyAndPerform('render',context)
+    }
+
+    verifyAndPerform(f, ...args){
         Array.from(this.gameObjects)
-            .filter(o => o.render ? true : false)
-            .forEach(o => o.render(context))
+            .filter(o => o[f] ? true : false)
+            .forEach(o => o[f](...args))
     }
 
     update(dt){
-        Array.from(this.gameObjects)
-            .filter(o => o.update ? true : false)
-            .forEach(o => o.update(dt))
+        this.verifyAndPerform('update',dt, this.width, this.height)
     }
 
     handleKeyDown(key){
-        Array.from(this.gameObjects)
-            .filter(o => o.handleKeyDown ? true : false)
-            .forEach(o => o.handleKeyDown(key))
+        this.verifyAndPerform('handleKeyDown',key)
     }
+
     handleKeyUp(key){
-        Array.from(this.gameObjects)
-            .filter(o => o.handleKeyUp ? true : false)
-            .forEach(o => o.handleKeyUp(key))
+        this.verifyAndPerform('handleKeyUp',key)
     }
 
     start(){
@@ -57,6 +55,11 @@ class Game {
 
     addObject(obj){
         this.gameObjects.add(obj)
+    }
+
+    removeObject(id){
+        this.gameObjects = new Set(Array.from(this.gameObjects)
+                                        .filter(o => o.id ==id))
     }
 }
 
@@ -82,12 +85,23 @@ class Player {
         this.color = color
     }
 
-    update(dt){
-        this.x += this.direction_x * this.VEL;
-        this.y += this.direction_y * this.VEL;
+    update(dt, totalWidth, totalHeight){
+        // TODO wip
+        /*
+        this.direction_x < 0
+            ? this.x = Math.min( this.x + (this.direction_x * this.VEL), 0)
+            : this.x = Math.max( this.x + (this.direction_x * this.VEL), totalWidth)
+        this.direction_y < 0
+            ? this.y = Math.max( this.y + (this.direction_y * this.VEL), 0)
+            : this.y = Math.max( this.y + (this.direction_y * this.VEL),totalHeight)
+        */
+        this.x = this.x + (this.direction_x * this.VEL)
+        this.y = this.y + (this.direction_y * this.VEL)
     }
 
     render(context){
+        // TODO loop around
+
         fillRect(
             context,
             this.x,
@@ -97,32 +111,32 @@ class Player {
             this.color)
     }
 
+    lookupDirection(key){
+        return this.direction_table[key] ? this.direction_table[key] : [0,0]
+    }
+
     handleKeyDown(key){
-        if(this.direction_table[key]){
-            if(!this.keysPressed.has(key)){
-                const [ddx, ddy] = this.direction_table[key]
-                this.direction_x += ddx
-                this.direction_y += ddy
-                this.keysPressed.add(key)
-            }
+        if(!this.keysPressed.has(key)){
+            const [ddx, ddy] = this.lookupDirection(key)
+            this.direction_x += ddx
+            this.direction_y += ddy
+            this.keysPressed.add(key)
         }
     }
 
     handleKeyUp(key){
-        if(this.direction_table[key]){
-            if(this.keysPressed.has(key)){
-                const [ddx, ddy] = this.direction_table[key]
-                this.direction_x -= ddx
-                this.direction_y -= ddy
-                this.keysPressed.delete(key)
-            }
+        if(this.keysPressed.has(key)){
+            const [ddx, ddy] = this.lookupDirection(key)
+            this.direction_x -= ddx
+            this.direction_y -= ddy
+            this.keysPressed.delete(key)
         }
     }
 }
 
 function spawnFruit(){
     function randInScreen(){
-        return [Math.random()*canvas.width, Math.random()*canvas.height]
+        return [Math.random() * canvas.width, Math.random() * canvas.height]
     }
     let [x,y] = randInScreen()
     fillCircle(x,y, FRUIT_RADIUS, 'yellow')
@@ -137,7 +151,7 @@ function main() {
     canvas.width = document.body.clientWidth
     canvas.height = document.body.clientHeight
 
-    let game = new Game([
+    let game = new Game(canvas.width, canvas.height,[
          new Player('player1', 'red')
     ]);
 
@@ -149,6 +163,7 @@ function main() {
         if (!start) {
             start = timestamp;
         }
+
         const dt = (timestamp - start) * 0.001;
         start = timestamp;
 
@@ -172,11 +187,10 @@ function main() {
     document.addEventListener('keydown', e =>{
         game.handleKeyDown(e.code)
     })
+
     document.addEventListener('keyup', e =>{
         game.handleKeyUp(e.code)
     })
-
-
 
 }
 main();
